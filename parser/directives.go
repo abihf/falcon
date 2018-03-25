@@ -1,4 +1,4 @@
-package falcon
+package parser
 
 import (
 	"fmt"

@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/abihf/falcon-graphql/directives"
 	"github.com/graphql-go/graphql"
 )
 
@@ -30,6 +31,10 @@ func (r Resolver) RegisterType(objectName string, v interface{}) {
 			}
 		})(index)
 	}
+}
+
+func (r Resolver) ApplyDirectiveMidleware(directiveName string, fn directives.MidlewareFn) {
+	r["@"+directiveName] = directives.CreateMidleware(fn)
 }
 
 func CreateTypeChecker(v interface{}) graphql.IsTypeOfFn {

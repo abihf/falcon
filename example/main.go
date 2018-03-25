@@ -1,13 +1,12 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
 	"log"
+	"net/http"
 
 	"github.com/abihf/falcon-graphql"
 	"github.com/abihf/falcon-graphql/example/resolver"
-	"github.com/graphql-go/graphql"
+	"github.com/graphql-go/handler"
 )
 
 type user struct {
@@ -15,64 +14,56 @@ type user struct {
 }
 
 func main() {
-	schemaString := `
+	resolvers := resolver.Get()
+	resolvers.ApplyDirectiveMidleware("append", appendMidleware)
+	schema, err := falcon.CreateSchema(map[string][]byte{
+		"1.gql": schemaBody1,
+		"2.gql": schemaBody2,
+	}, resolvers)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	http.ListenAndServe(":8080", handler.New(&handler.Config{
+		Schema:   schema,
+		GraphiQL: true,
+		Pretty:   true,
+	}))
+}
+
+var schemaBody1 = []byte(`
 schema {
-	query: QueryRoot
+  query: QueryRoot
 }
 
 type QueryRoot {
-	me: User
-	node(id: ID!): Node
+  me: User
+  node(id: ID!): Node
 }
+`)
 
+var schemaBody2 = []byte(`
+"tore user information"
 type User implements Node {
+	# user id
 	id: ID!
-	name: String!
+
+	# user name
+	name: String! @append(suffix:"Hafshin")
+
+	# friend list
+  friends: [User!]!
+
 	size(unit: LongUnit = METER): Float
-	friends: [User!]!
 }
 
 interface Node {
-	id: ID!
+  id: ID!
 }
 
 enum LongUnit {
-	INCH @deprecated(reason: "Use other")
-	CENTI_METER
-	METER
+  INCH @deprecated(reason: "Use other")
+  CENTI_METER
+  METER
 }
-	`
-	resolvers := resolver.Get()
-	schema, err := falcon.CreateSchema(schemaString, resolvers)
-	if err != nil {
-		log.Fatalf("Failed to parse schema\n%s", err.Error())
-	}
-
-	// Query
-	query := `
-		query GetNode{
-			node(id: "1") {
-				id
-				...SomeFragment
-			}
-		}
-
-		fragment SomeFragment on User {
-			__typename
-			name
-			friends {
-				name
-			}
-		}
-	`
-	params := graphql.Params{
-		Schema:        *schema,
-		RequestString: query,
-	}
-	r := graphql.Do(params)
-	if len(r.Errors) > 0 {
-		log.Fatalf("failed to execute graphql operation, errors: %+v", r.Errors)
-	}
-	rJSON, _ := json.Marshal(r)
-	fmt.Printf("result: %s \n", rJSON)
-}
+`)

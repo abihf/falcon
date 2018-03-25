@@ -1,8 +1,7 @@
-package falcon
+package parser
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/graphql-go/graphql/language/kinds"
 
@@ -10,7 +9,7 @@ import (
 	"github.com/graphql-go/graphql/language/ast"
 )
 
-func (p *parser) getSchema() (*graphql.Schema, error) {
+func (p *parser) GetSchema() (*graphql.Schema, error) {
 	d, ok := p.definitions["_schema"]
 	if !ok {
 		return nil, errors.New("Can not found schema definition")
@@ -26,7 +25,7 @@ func (p *parser) parseSchema(def *ast.SchemaDefinition) (*graphql.Schema, error)
 	for _, operation := range def.OperationTypes {
 		parsed, err := p.getParsed(operation.Type.Name.Value, kinds.ObjectDefinition)
 		if err != nil {
-			return nil, fmt.Errorf("Invalid query operation type for {%s} caused by %s", locToString(operation.GetLoc()), err.Error())
+			return nil, err
 		}
 		obj := parsed.(*graphql.Object)
 		switch operation.Operation {

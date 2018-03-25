@@ -1,4 +1,4 @@
-package falcon
+package parser
 
 import (
 	"fmt"
@@ -26,7 +26,7 @@ type FieldArgDirectiveContext struct {
 func (p *parser) parseField(parentName string, def *ast.FieldDefinition) (*graphql.Field, error) {
 	fieldName := def.Name.Value
 	resolverName := parentName + "." + fieldName
-	var resolver graphql.FieldResolveFn
+	var resolver graphql.FieldResolveFn = graphql.DefaultResolveFn
 	if r, ok := p.resolver[resolverName]; ok {
 		resolver, ok = r.(graphql.FieldResolveFn)
 		if !ok {

@@ -1,51 +1,78 @@
-package falcon
+package parser
 
 import (
 	"fmt"
+
+	"github.com/graphql-go/graphql/gqlerrors"
+
+	gqlParser "github.com/graphql-go/graphql/language/parser"
+	"github.com/graphql-go/graphql/language/source"
 
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/language/ast"
 )
 
 type parser struct {
-	resolver    Resolver
+	resolver    map[string]interface{}
 	definitions map[string]ast.Definition
 	types       map[string]graphql.Type
 }
 
-func createParser(doc *ast.Document, resolver Resolver) *parser {
+func Create(resolver map[string]interface{}) *parser {
 	// insert common resolver
 	if _, ok := resolver["@deprecated"]; !ok {
-		resolver["@deprecated"] = CreateDeprecationCallback()
+		// resolver["@deprecated"] = CreateDeprecationCallback()
 	}
 
 	// populate definitions map
 	definitions := make(map[string]ast.Definition)
-	for _, d := range doc.Definitions {
-		switch d.(type) {
-		case *ast.SchemaDefinition:
-			def := d.(*ast.SchemaDefinition)
-			definitions["_schema"] = def
-
-		case *ast.ObjectDefinition:
-			def := d.(*ast.ObjectDefinition)
-			definitions[def.Name.Value] = def
-
-		case *ast.InterfaceDefinition:
-			def := d.(*ast.InterfaceDefinition)
-			definitions[def.Name.Value] = def
-
-		case *ast.EnumDefinition:
-			def := d.(*ast.EnumDefinition)
-			definitions[def.Name.Value] = def
-		}
-	}
-
 	return &parser{
 		resolver:    resolver,
 		definitions: definitions,
 		types:       make(map[string]graphql.Type),
 	}
+}
+
+func (p *parser) ParseSource(name string, body []byte) error {
+	doc, err := gqlParser.Parse(gqlParser.ParseParams{
+		Source: source.NewSource(&source.Source{Name: name, Body: body}),
+		Options: gqlParser.ParseOptions{
+			NoLocation: false,
+			NoSource:   false,
+		},
+	})
+
+	if err != nil {
+		return err
+	}
+
+	for _, d := range doc.Definitions {
+		switch d.(type) {
+		case *ast.SchemaDefinition:
+			def := d.(*ast.SchemaDefinition)
+			p.definitions["_schema"] = def
+
+		case *ast.ObjectDefinition:
+			def := d.(*ast.ObjectDefinition)
+			p.definitions[def.Name.Value] = def
+
+		case *ast.InterfaceDefinition:
+			def := d.(*ast.InterfaceDefinition)
+			p.definitions[def.Name.Value] = def
+
+		case *ast.EnumDefinition:
+			def := d.(*ast.EnumDefinition)
+			p.definitions[def.Name.Value] = def
+
+		default:
+			return graphql.NewLocatedError(
+				fmt.Sprintf("Unknown definition type %s", d.GetKind()),
+				[]ast.Node{d},
+			)
+		}
+	}
+
+	return nil
 }
 
 func (p *parser) getParsed(name string, expected string) (graphql.Type, error) {
@@ -55,13 +82,16 @@ func (p *parser) getParsed(name string, expected string) (graphql.Type, error) {
 
 	def, ok := p.definitions[name]
 	if !ok {
-		return nil, fmt.Errorf("%s not found", name)
+		return nil, fmt.Errorf("Can not found %s", name)
 	}
 	if expected != "" && expected != def.GetKind() {
-		return nil, fmt.Errorf("Invalid type for %s, expected %s got %s. {%s}", name, expected, def.GetKind(), locToString(def.GetLoc()))
+		return nil, graphql.NewLocatedError(
+			fmt.Sprintf("Invalid type for %s: expected %s got %s", name, expected, def.GetKind()),
+			[]ast.Node{def},
+		)
 	}
 
-	parsed, err := p.parse(def)
+	parsed, err := p.parseDefinition(def)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +99,7 @@ func (p *parser) getParsed(name string, expected string) (graphql.Type, error) {
 	return parsed, nil
 }
 
-func (p *parser) parse(d ast.Definition) (graphql.Type, error) {
+func (p *parser) parseDefinition(d ast.Definition) (graphql.Type, error) {
 	switch d.(type) {
 	case *ast.ObjectDefinition:
 		return p.parseObject(d.(*ast.ObjectDefinition))
@@ -78,7 +108,10 @@ func (p *parser) parse(d ast.Definition) (graphql.Type, error) {
 	case *ast.EnumDefinition:
 		return p.parseEnum(d.(*ast.EnumDefinition))
 	}
-	return nil, fmt.Errorf("Can not parse definition of type %s\nat %s", d.GetKind(), locToString(d.GetLoc()))
+	return nil, graphql.NewLocatedError(
+		fmt.Sprintf("Can not parse definition of type %s"),
+		[]ast.Node{d},
+	)
 }
 
 func (p *parser) convertType(t ast.Type) (graphql.Output, error) {
@@ -111,8 +144,15 @@ func (p *parser) convertType(t ast.Type) (graphql.Output, error) {
 		case "Boolean":
 			return graphql.Boolean, nil
 		default:
-			return p.getParsed(name, "")
+			parsed, err := p.getParsed(name, "")
+			if err != nil {
+				return nil, gqlerrors.NewSyntaxError(t.GetLoc().Source, t.GetLoc().Start, err.Error())
+			}
+			return parsed, nil
 		}
 	}
-	return nil, fmt.Errorf("Can not parse type %s\nat %s", t.String(), locToString(t.GetLoc()))
+	return nil, graphql.NewLocatedError(
+		fmt.Sprintf("Can not parse type %s", t.String()),
+		[]ast.Node{t},
+	)
 }
