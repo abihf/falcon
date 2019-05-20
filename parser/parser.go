@@ -64,6 +64,10 @@ func (p *parser) ParseSource(name string, body []byte) error {
 			def := d.(*ast.EnumDefinition)
 			p.definitions[def.Name.Value] = def
 
+		case *ast.InputObjectDefinition:
+			def := d.(*ast.InputObjectDefinition)
+			p.definitions[def.Name.Value] = def
+
 		default:
 			return graphql.NewLocatedError(
 				fmt.Sprintf("Unknown definition type %s", d.GetKind()),
@@ -107,6 +111,8 @@ func (p *parser) parseDefinition(d ast.Definition) (graphql.Type, error) {
 		return p.parseInterface(d.(*ast.InterfaceDefinition))
 	case *ast.EnumDefinition:
 		return p.parseEnum(d.(*ast.EnumDefinition))
+	case *ast.InputObjectDefinition:
+		return p.parseInputObject(d.(*ast.InputObjectDefinition))
 	}
 	return nil, graphql.NewLocatedError(
 		fmt.Sprintf("Can not parse definition of type %s"),
