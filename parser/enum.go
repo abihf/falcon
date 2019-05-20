@@ -1,39 +1,22 @@
 package parser
 
 import (
+	"github.com/abihf/falcon-graphql/directives"
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/language/ast"
 )
 
-type EnumDirectiveContext struct {
-	Name   string
-	Config *graphql.EnumConfig
-	Ast    *ast.EnumDefinition
-}
-
-type EnumValueDirectiveContext struct {
-	Name   string
-	Config *graphql.EnumValueConfig
-	Ast    *ast.EnumValueDefinition
-}
-
 func (p *parser) parseEnum(def *ast.EnumDefinition) (*graphql.Enum, error) {
-	var enumDesc string
-
 	values := make(graphql.EnumValueConfigMap)
 	for _, valDef := range def.Values {
 		valName := valDef.Name.Value
-		var valDesc string
-		if valDef.Description != nil {
-			valDesc = valDef.Description.Value
-		}
 		values[valName] = &graphql.EnumValueConfig{
 			Value:       valName,
-			Description: valDesc,
+			Description: stringValue(valDef.Description),
 		}
 
 		if len(valDef.Directives) > 0 {
-			dirContext := &EnumValueDirectiveContext{
+			dirContext := &directives.EnumValueDirectiveContext{
 				Name:   valName,
 				Config: values[valName],
 				Ast:    valDef,
@@ -46,12 +29,12 @@ func (p *parser) parseEnum(def *ast.EnumDefinition) (*graphql.Enum, error) {
 
 	config := graphql.EnumConfig{
 		Name:        def.Name.Value,
-		Description: enumDesc,
+		Description: stringValue(def.Description),
 		Values:      values,
 	}
 
 	if len(def.Directives) > 0 {
-		dirContext := &EnumDirectiveContext{
+		dirContext := &directives.EnumDirectiveContext{
 			Name:   def.Name.Value,
 			Config: &config,
 			Ast:    def,

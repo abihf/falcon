@@ -1,38 +1,21 @@
 package directives
 
 import (
-	"github.com/abihf/falcon-graphql/parser"
 	"github.com/graphql-go/graphql"
 )
 
-type deprecation struct{}
+type deprecation struct{ DefaultVisitor }
 
-func CreateDeprecationCallback() parser.DirectiveCallback {
+func CreateDeprecationCallback() Visitor {
 	return CreateCallback(&deprecation{})
 }
 
-func (d *deprecation) Object(dirContext *parser.ObjectDirectiveContext, args map[string]interface{}) error {
-	return nil
-}
-
-func (d *deprecation) Field(dirContext *parser.FieldDirectiveContext, args map[string]interface{}) error {
+func (d *deprecation) Field(dirContext *FieldDirectiveContext, args map[string]interface{}) error {
 	dirContext.Config.DeprecationReason = d.getDeprecationReason(args)
 	return nil
 }
 
-func (d *deprecation) FieldArg(dirContext *parser.FieldArgDirectiveContext, args map[string]interface{}) error {
-	return nil
-}
-
-func (d *deprecation) Interface(dirContext *parser.InterfaceDirectiveContext, args map[string]interface{}) error {
-	return nil
-}
-
-func (d *deprecation) Enum(dirContext *parser.EnumDirectiveContext, args map[string]interface{}) error {
-	return nil
-}
-
-func (d *deprecation) EnumValue(dirContext *parser.EnumValueDirectiveContext, args map[string]interface{}) error {
+func (d *deprecation) EnumValue(dirContext *EnumValueDirectiveContext, args map[string]interface{}) error {
 	dirContext.Config.DeprecationReason = d.getDeprecationReason(args)
 	return nil
 }

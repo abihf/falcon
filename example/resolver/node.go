@@ -3,7 +3,7 @@ package resolver
 import "github.com/graphql-go/graphql"
 
 func init() {
-	resolvers["QueryRoot.node"] = queryNode
+	resolvers.Add("QueryRoot", "node", queryNode)
 }
 
 func queryNode(param graphql.ResolveParams) (interface{}, error) {

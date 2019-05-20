@@ -3,16 +3,39 @@ package parser
 import (
 	"fmt"
 
+	"github.com/abihf/falcon-graphql/directives"
+	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/language/ast"
 )
 
-type DirectiveCallbackParam struct {
-	Name    string
-	Kind    string
-	Context interface{}
-	Args    map[string]interface{}
+func (p *parser) parseDirective(def *ast.DirectiveDefinition) (*graphql.Directive, error) {
+	var locations []string
+	args := make(graphql.FieldConfigArgument)
+
+	for _, loc := range def.Locations {
+		locations = append(locations, loc.Value)
+	}
+
+	for _, argDef := range def.Arguments {
+		argType, err := p.convertType(argDef.Type)
+		if err != nil {
+			return nil, err
+		}
+		args[argDef.Name.Value] = &graphql.ArgumentConfig{
+			Type:         argType,
+			Description:  stringValue(argDef.Description),
+			DefaultValue: astValue(argDef.DefaultValue),
+		}
+	}
+
+	config := graphql.DirectiveConfig{
+		Name:        def.Name.Value,
+		Description: stringValue(def.Description),
+		Locations:   locations,
+		Args:        args,
+	}
+	return graphql.NewDirective(config), nil
 }
-type DirectiveCallback func(param *DirectiveCallbackParam) error
 
 func (p *parser) processDirectives(directives []*ast.Directive, kind string, context interface{}) error {
 	for _, dir := range directives {
@@ -31,9 +54,9 @@ func (p *parser) processDirective(dir *ast.Directive, kind string, context inter
 		return nil
 	}
 
-	fn, ok := resolver.(DirectiveCallback)
+	fn, ok := resolver.(directives.Visitor)
 	if !ok {
-		fn, ok = resolver.(func(param *DirectiveCallbackParam) error)
+		fn, ok = resolver.(func(param *directives.VisitorParam) error)
 	}
 	if !ok {
 		return fmt.Errorf("Invalid directive resolver function for %s", resolverName)
@@ -44,7 +67,7 @@ func (p *parser) processDirective(dir *ast.Directive, kind string, context inter
 		args[arg.Name.Value] = arg.Value.GetValue()
 	}
 
-	param := &DirectiveCallbackParam{
+	param := &directives.VisitorParam{
 		Name:    dir.Name.Value,
 		Kind:    kind,
 		Context: context,

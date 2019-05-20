@@ -1,15 +1,10 @@
 package parser
 
 import (
+	"github.com/abihf/falcon-graphql/directives"
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/language/ast"
 )
-
-type InputObjectDirectiveContext struct {
-	Name   string
-	Config *graphql.InputObjectConfig
-	Ast    *ast.InputObjectDefinition
-}
 
 func (p *parser) parseInputObject(def *ast.InputObjectDefinition) (*graphql.InputObject, error) {
 
@@ -29,7 +24,7 @@ func (p *parser) parseInputObject(def *ast.InputObjectDefinition) (*graphql.Inpu
 	}
 
 	if len(def.Directives) > 0 {
-		dirContext := &InputObjectDirectiveContext{
+		dirContext := &directives.InputObjectDirectiveContext{
 			Name:   def.Name.Value,
 			Config: &config,
 			Ast:    def,
@@ -39,15 +34,7 @@ func (p *parser) parseInputObject(def *ast.InputObjectDefinition) (*graphql.Inpu
 		}
 	}
 
-	input := graphql.NewInputObject(config)
-	p.types[def.Name.Value] = input
-	return input, nil
-}
-
-type InputObjectFieldDirectiveContext struct {
-	Name  string
-	Field *graphql.InputObjectField
-	Ast   *ast.InputValueDefinition
+	return graphql.NewInputObject(config), nil
 }
 
 func (p *parser) parseInputValue(def *ast.InputValueDefinition) (*graphql.InputObjectField, error) {
@@ -62,7 +49,7 @@ func (p *parser) parseInputValue(def *ast.InputValueDefinition) (*graphql.InputO
 		Type:               inputType,
 	}
 	if len(def.Directives) > 0 {
-		dirContext := &InputObjectFieldDirectiveContext{
+		dirContext := &directives.InputValueDirectiveContext{
 			Name:  def.Name.Value,
 			Field: field,
 			Ast:   def,

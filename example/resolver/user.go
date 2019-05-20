@@ -6,8 +6,8 @@ import (
 
 func init() {
 	resolvers.RegisterType("User", &user{})
-	resolvers["QueryRoot.me"] = queryUser
-	resolvers["User.friends"] = getUserFriends
+	resolvers.Add("QueryRoot", "me", queryUser)
+	resolvers.Add("User", "friends", getUserFriends)
 }
 
 type user struct {

@@ -37,11 +37,20 @@ func (p *parser) parseSchema(def *ast.SchemaDefinition) (*graphql.Schema, error)
 			subscriptionObject = obj
 		}
 	}
+	var types []graphql.Type
+	for _, name := range p.typeNames {
+		parsed, err := p.getParsed(name, "")
+		if err == nil {
+			types = append(types, parsed)
+		}
+	}
 
 	schema, err := graphql.NewSchema(graphql.SchemaConfig{
 		Query:        queryObject,
 		Mutation:     mutationObject,
 		Subscription: subscriptionObject,
+		Directives:   p.directives,
+		Types:        types,
 	})
 	return &schema, err
 }

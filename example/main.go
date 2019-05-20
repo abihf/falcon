@@ -37,12 +37,19 @@ schema {
 }
 
 type QueryRoot {
-  me: User
+	"Get cuurrent user"
+	me: User
+	
+	"random node?"
   node(id: ID!): Node
 }
 `)
 
 var schemaBody2 = []byte(`
+directive @deprecated(
+  reason: String = "No longer supported"
+) on FIELD_DEFINITION | ENUM_VALUE
+
 "tore user information"
 type User implements Node {
 	# user id
@@ -54,7 +61,7 @@ type User implements Node {
 	# friend list
   friends: [User!]!
 
-	size(unit: LongUnit = METER): Float
+	size(unit: LongUnit = METER): Float @deprecated(reason: "Why?")
 }
 
 interface Node {

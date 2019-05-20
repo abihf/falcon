@@ -8,6 +8,16 @@ import (
 	"github.com/graphql-go/graphql"
 )
 
+func (r Resolver) Add(objectName string, field string, resolver graphql.FieldResolveFn) {
+	r[objectName+"."+field] = resolver
+}
+
+func (r Resolver) AddScalar(name string, serialize graphql.SerializeFn, parseValue graphql.ParseValueFn, parseLiteral graphql.ParseLiteralFn) {
+	r[name+".serialize"] = serialize
+	r[name+".parseValue"] = parseValue
+	r[name+".parseLiteral"] = parseLiteral
+}
+
 // RegisterType is helper function to register a struct.
 // Example:
 //  type User struct {
